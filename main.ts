@@ -1,3 +1,6 @@
+// Sundown District (gta6-01, @brikzeni): an original open-world crime game in Cinder Bay.
+// This entry's main.ts is the kit plumbing, kept as shipped, with this header line written
+// by the recorded agent session that built the game (see game/src/main.js).
 // A working gta6-01 entry (Node 22, standard library only): the game is this directory's
 // game/ folder, plain static files a desktop browser loads offline (game/index.html and its ES
 // modules, no library and no network request), and the program hands it in. It copies game/ and

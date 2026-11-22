@@ -3,17 +3,103 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<link rel="icon" href="data:,">
+<title>Sundown District — Cinder Bay</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  :root{--ink:#fff3e0;--muted:#ffd9a0;--accent:#ff9a3c;--accent2:#ff5e7a;--panel:rgba(20,12,28,.72);--line:rgba(255,154,60,.45)}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#1a0f1e;color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+  #game,#game canvas{position:fixed;inset:0;display:block}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(3px)}
+  #topleft{position:absolute;left:14px;top:12px;padding:10px 14px;min-width:210px}
+  #topleft .money{font-size:26px;font-weight:800;letter-spacing:.5px;color:#ffe9b0}
+  #topleft .money small{font-size:12px;color:var(--muted);font-weight:600}
+  #healthbar{height:9px;background:#3a2333;border-radius:5px;margin-top:7px;overflow:hidden}
+  #healthfill{height:100%;width:100%;background:linear-gradient(90deg,#ff5e7a,#ff9a3c);transition:width .25s}
+  #healthnum{font-size:11px;color:var(--muted);margin-top:4px}
+  #wanted{position:absolute;right:16px;top:12px;padding:8px 12px;text-align:right}
+  #stars{font-size:22px;letter-spacing:3px;color:#ffd23c;text-shadow:0 0 8px rgba(255,210,60,.7)}
+  #stars .off{color:#5c4a55;text-shadow:none}
+  #wantedlabel{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+  #objective{position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:9px 18px;max-width:520px;text-align:center}
+  #objective .mname{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+  #objective .mtext{font-size:15px;font-weight:650;margin-top:2px}
+  #minimapwrap{position:absolute;left:14px;bottom:14px;padding:8px}
+  #minimap{display:block;border-radius:8px}
+  #minimapcap{font-size:10px;letter-spacing:2px;color:var(--muted);text-align:center;margin-top:5px;text-transform:uppercase}
+  #speedo{position:absolute;right:16px;bottom:14px;padding:10px 16px;text-align:right;display:none}
+  #speedo .sp{font-size:34px;font-weight:800;line-height:1}
+  #speedo .sp small{font-size:12px;color:var(--muted)}
+  #speedo .carname{font-size:12px;color:var(--muted);margin-top:3px}
+  #ammo{position:absolute;right:16px;bottom:110px;padding:8px 14px;font-size:20px;font-weight:700;display:none}
+  #ammo small{font-size:12px;color:var(--muted)}
+  #prompt{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);padding:9px 16px;font-size:15px;font-weight:650;display:none}
+  #prompt b{color:var(--accent)}
+  #crosshair{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);display:none}
+  #crosshair i{position:absolute;background:#fff;opacity:.9}
+  #crosshair i:nth-child(1){left:10px;top:0;width:2px;height:7px}#crosshair i:nth-child(2){left:10px;bottom:0;width:2px;height:7px}
+  #crosshair i:nth-child(3){top:10px;left:0;height:2px;width:7px}#crosshair i:nth-child(4){top:10px;right:0;height:2px;width:7px}
+  #toast{position:absolute;left:50%;top:84px;transform:translateX(-50%);padding:10px 20px;font-size:15px;font-weight:700;display:none;text-align:center}
+  #dialogue{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);width:min(620px,92vw);padding:14px 18px;display:none}
+  #dialogue .who{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:800}
+  #dialogue .line{font-size:16px;line-height:1.45;margin-top:4px}
+  #dialogue .hint{font-size:11px;color:var(--muted);margin-top:8px}
+  .overlay{position:fixed;inset:0;display:grid;place-items:center;z-index:10;background:linear-gradient(180deg,rgba(26,10,24,.55),rgba(26,10,24,.82))}
+  .overlay[hidden]{display:none}
+  .card{width:min(560px,94vw);padding:34px 36px;background:rgba(24,12,30,.88);border:1px solid var(--line);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .card h1{margin:0;font-size:44px;line-height:1;letter-spacing:-1px}
+  .card h1 span{color:var(--accent)}
+  .card .sub{color:var(--muted);margin:8px 0 18px;font-size:15px;line-height:1.5}
+  .card .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  button{font:inherit;font-weight:700;padding:12px 20px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#241016;cursor:pointer}
+  button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  button:hover{filter:brightness(1.12)}
+  .keys{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin-top:20px;font-size:13px;color:var(--muted)}
+  .keys b{color:var(--ink)}
+  kbd{padding:1px 7px;border:1px solid var(--line);border-radius:5px;background:#2a1626;font-size:12px;color:var(--ink)}
+  #status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  #fps{position:absolute;right:16px;bottom:14px;font-size:11px;color:rgba(255,255,255,.45);display:none}
+  @media (max-width:700px){#objective{max-width:70vw}#topleft{min-width:160px}}
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<div id="game"></div>
+<div id="hud" aria-hidden="true">
+  <div id="topleft" class="panel"><div class="money">$<span id="money">120</span> <small>CINDER BAY</small></div>
+    <div id="healthbar"><div id="healthfill"></div></div><div id="healthnum">HEALTH 100 &middot; AMMO <span id="ammoMini">12</span></div></div>
+  <div id="wanted" class="panel"><div id="stars"></div><div id="wantedlabel">Clear</div></div>
+  <div id="objective" class="panel"><div class="mname" id="mname">Sundown District</div><div class="mtext" id="mtext">Press ENTER to start</div></div>
+  <div id="minimapwrap" class="panel"><canvas id="minimap" width="190" height="190"></canvas><div id="minimapcap">Cinder Bay &middot; N &uarr;</div></div>
+  <div id="speedo" class="panel"><div class="sp"><span id="speed">0</span> <small>mph</small></div><div class="carname" id="carname">Sedan</div></div>
+  <div id="ammo" class="panel"><span id="ammoMag">12</span> <small>/ &infin; &middot; R reload</small></div>
+  <div id="prompt" class="panel"></div>
+  <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+  <div id="toast" class="panel"></div>
+  <div id="dialogue" class="panel"><div class="who" id="dlgWho"></div><div class="line" id="dlgLine"></div><div class="hint">Press E to continue</div></div>
+</div>
+<div id="overlay" class="overlay">
+  <section class="card" role="dialog" aria-modal="true" aria-labelledby="title">
+    <h1>SUNDOWN<br><span>DISTRICT</span></h1>
+    <p class="sub">Cinder Bay &mdash; a sun-soaked coastal city of waterfront hotels, old-market alleys and private-security corruption. You are <b>Rae</b>, a former courier. One wrong delivery pulls you into the network that runs this town. Drive it, steal it, outrun it &mdash; and bring the evidence home.</p>
+    <div class="row"><button id="play" type="button">Start the story</button><button id="continueBtn" type="button" class="ghost" hidden>Continue saved game</button><button id="freeroam" type="button" class="ghost">Free roam</button></div>
+    <div class="keys">
+      <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <b>Move / drive</b></div><div><kbd>Mouse</kbd> <b>Look (click to lock)</b></div>
+      <div><kbd>Shift</kbd> <b>Sprint</b> &middot; <kbd>Space</kbd> <b>Jump</b></div><div><kbd>F</kbd> <b>Enter / exit car</b></div>
+      <div><kbd>E</kbd> <b>Interact / talk</b></div><div><kbd>Click</kbd> <b>Fire</b> &middot; <kbd>R</kbd> <b>Reload</b></div>
+      <div><kbd>M</kbd> <b>Mission list</b></div><div><kbd>Esc</kbd> <b>Pause &amp; save</b></div>
+    </div>
+    <p class="sub" style="margin-top:16px;font-size:12px">An original game. No Rockstar content. Everything &mdash; city, cars, people, story &mdash; was built for this entry. Runs offline, no network.</p>
+  </section>
+</div>
+<div id="pause" class="overlay" hidden>
+  <section class="card"><h1 style="font-size:32px">PAUSED</h1>
+    <p class="sub" id="pauseStats"></p>
+    <div class="row"><button id="resume" type="button">Resume</button><button id="saveBtn" type="button" class="ghost">Save game</button><button id="quitBtn" type="button" class="ghost">Save &amp; title screen</button></div>
+  </section>
+</div>
 <p id="status" role="status" aria-live="polite"></p>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
